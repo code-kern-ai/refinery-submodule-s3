@@ -10,7 +10,7 @@ If you like what we're working on, please leave a ⭐ for [refinery](https://git
 ## Usage
 
 Implement by using:
-`git submodule add git@github.com:code-kern-ai/submodule-model.git submodules/model`
+`git submodule add https://github.com/code-kern-ai/refinery-submodule-s3.git submodules/s3`
 
 This means the requirements of the project need to include:
 

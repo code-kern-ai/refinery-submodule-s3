@@ -194,6 +194,43 @@ def get_upload_credentials_and_id(target_bucket: str) -> dict:
     return response
 
 
+def get_upload_credentials_and_id_with_endpoint(
+    target_bucket: str, endpoint: str
+) -> dict:
+    if not bucket_exists(target_bucket):
+        create_bucket(target_bucket)
+
+    sts_client = boto3.client(
+        "sts",
+        region_name="eu-west-1",
+        endpoint_url=endpoint,
+        aws_access_key_id=os.getenv("S3_ACCESS_KEY"),
+        aws_secret_access_key=os.getenv("S3_SECRET_KEY"),
+        use_ssl=False,
+    )
+    policy = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "PutObj",
+                "Effect": "Allow",
+                "Action": [
+                    "s3:PutObject",
+                ],
+                "Resource": f"arn:aws:s3:::{target_bucket}/*",
+            },
+        ],
+    }
+    response = sts_client.assume_role(
+        RoleArn="arn:x:ignored:by:minio:",
+        RoleSessionName="ignored-by-minio",
+        Policy=json.dumps(policy, separators=(",", ":")),
+        DurationSeconds=12000,
+    )
+
+    return response
+
+
 def get_download_credentials(bucket: str, object: str) -> dict:
     if not bucket_exists(bucket):
         create_bucket(bucket)

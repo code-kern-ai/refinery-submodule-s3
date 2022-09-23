@@ -418,7 +418,6 @@ def upload_tokenizer_data(bucket: str, project_id: str, data: str) -> bool:
 
     """
     object_name = (project_id + "/" if project_id else "") + "docbin_full"
-    print(object_name, flush=True)
     if not bucket_exists(bucket):
         create_bucket(bucket)
 

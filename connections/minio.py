@@ -62,15 +62,18 @@ def put_object(bucket: str, object_name: str, data: str) -> str:
     return True
 
 
-def get_object(bucket: str, object_name: str) -> str:
+def get_object(
+    bucket: str, object_name: str, decode: typing.Optional[str] = "UTF-8"
+) -> str:
     client = __get_client()
 
     if not bucket_exists(bucket):
         return ""
 
-    return client.get_object(bucket_name=bucket, object_name=object_name).data.decode(
-        "UTF-8"
-    )
+    data = client.get_object(bucket_name=bucket, object_name=object_name).data
+    if decode:
+        return data.decode(decode)
+    return data
 
 
 def download_object(bucket: str, object_name: str, file_type: str) -> str:

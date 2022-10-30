@@ -153,7 +153,9 @@ def put_object(bucket: str, object_name: str, data: str) -> bool:
     return False
 
 
-def get_object(bucket: str, object_name: str) -> str:
+def get_object(
+    bucket: str, object_name: str, decode: typing.Optional[str] = "UTF-8"
+) -> str:
     """
     Returns data from an s3 object as string data.
     If any data needs to be loaded, use fget_object to download a file.
@@ -167,13 +169,9 @@ def get_object(bucket: str, object_name: str) -> str:
     """
     target = get_current_target()
     if target == ConnectionTarget.MINIO:
-        return minio.get_object(bucket, object_name)
+        return minio.get_object(bucket, object_name, decode)
     elif target == ConnectionTarget.AWS:
-        return aws.get_object(bucket, object_name)
-    elif target == ConnectionTarget.UNKNOWN:
-        return None
-
-    return None
+        return aws.get_object(bucket, object_name, decode)
 
 
 def download_object(bucket: str, object_name: str, file_type: str) -> str:

@@ -76,15 +76,18 @@ def put_object(bucket: str, object_name: str, data: str) -> str:
     )
 
 
-def get_object(bucket: str, object_name: str) -> str:
+def get_object(
+    bucket: str, object_name: str, decode: typing.Optional[str] = "UTF-8"
+) -> str:
     client = __get_client()
 
     if not bucket_exists(bucket):
         return ""
 
-    return client.get_object(bucket_name=bucket, object_name=object_name).data.decode(
-        "UTF-8"
-    )
+    data = client.get_object(bucket_name=bucket, object_name=object_name).data
+    if decode:
+        return data.decode(decode)
+    return data
 
 
 def download_object(bucket: str, object_name: str, file_type: str) -> str:
@@ -197,24 +200,20 @@ def get_upload_credentials_and_id(target_bucket: str) -> dict:
                     "s3:DeleteObject",
                     "s3:ListMultipartUploadParts",
                     "s3:PutObject",
-                    "s3:GetObject"
+                    "s3:GetObject",
                 ],
-                "Resource": [
-                    f"arn:aws:s3:::{target_bucket}/*"
-                ]
+                "Resource": [f"arn:aws:s3:::{target_bucket}/*"],
             },
             {
                 "Effect": "Allow",
                 "Action": [
                     "s3:GetBucketLocation",
                     "s3:ListBucket",
-                    "s3:ListBucketMultipartUploads"
+                    "s3:ListBucketMultipartUploads",
                 ],
-                "Resource": [
-                    f"arn:aws:s3:::{target_bucket}"
-                ]
-            }
-        ]
+                "Resource": [f"arn:aws:s3:::{target_bucket}"],
+            },
+        ],
     }
 
     response = sts_client.assume_role(
@@ -248,23 +247,16 @@ def get_download_credentials(bucket: str, object: str) -> dict:
                     "s3:PutObject",
                     "s3:DeleteObject",
                     "s3:ListMultipartUploadParts",
-                    "s3:AbortMultipartUpload"
+                    "s3:AbortMultipartUpload",
                 ],
                 "Effect": "Allow",
-                "Resource": [
-                    f"arn:aws:s3:::{bucket}",
-                    f"arn:aws:s3:::{bucket}/*"
-                ]
+                "Resource": [f"arn:aws:s3:::{bucket}", f"arn:aws:s3:::{bucket}/*"],
             },
             {
                 "Sid": "AllowGetBucketLocation",
-                "Action": [
-                    "s3:GetBucketLocation"
-                ],
+                "Action": ["s3:GetBucketLocation"],
                 "Effect": "Allow",
-                "Resource": [
-                    f"arn:aws:s3:::{bucket}"
-                ]
+                "Resource": [f"arn:aws:s3:::{bucket}"],
             },
             # {
             #     "Sid": "AllowListBucketInFolder",
@@ -286,14 +278,10 @@ def get_download_credentials(bucket: str, object: str) -> dict:
             # },
             {
                 "Sid": "AllowListBucketUploads",
-                "Action": [
-                    "s3:ListBucketMultipartUploads"
-                ],
+                "Action": ["s3:ListBucketMultipartUploads"],
                 "Effect": "Allow",
-                "Resource": [
-                    f"arn:aws:s3:::{bucket}"
-                ]
-            }
+                "Resource": [f"arn:aws:s3:::{bucket}"],
+            },
         ]
     }
 

@@ -1,6 +1,6 @@
 import json
 import os
-import typing
+from typing import Optional, Dict, Any, Union
 import re
 
 from .connections import minio
@@ -92,7 +92,7 @@ def remove_bucket(bucket: str, recursive: bool = False) -> bool:
 
 
 def archive_bucket(
-    bucket: str, prefix: typing.Optional[str] = None, delete_existing: bool = True
+    bucket: str, prefix: Optional[str] = None, delete_existing: bool = True
 ) -> bool:
     """
     Archives given bucket to ARCHIVE_BUCKET.
@@ -349,7 +349,15 @@ def object_exists(bucket: str, object_name: str) -> bool:
     return False
 
 
-def get_upload_credentials_and_id(target_bucket: str, task_id: str) -> str:
+ESSENTIAL_CREDENTIAL_KEYS = {"bucket", "Credentials", "uploadTaskId"}
+
+
+def get_upload_credentials_and_id(
+    target_bucket: str,
+    task_id: Optional[str] = None,
+    as_dict: bool = False,
+    only_essentials: bool = False,
+) -> Union[str, Dict[str, Any]]:
     """
     Creates an upload task and necessary credentials and ids.
 
@@ -370,9 +378,16 @@ def get_upload_credentials_and_id(target_bucket: str, task_id: str) -> str:
     elif target == ConnectionTarget.UNKNOWN:
         pass
     if response:
-        response["uploadTaskId"] = task_id
         response["bucket"] = target_bucket
-        response = json.dumps(response, sort_keys=True, default=str)
+        if task_id:
+            response["uploadTaskId"] = task_id
+        if only_essentials:
+            response = {
+                k: v for k, v in response.items() if k in ESSENTIAL_CREDENTIAL_KEYS
+            }
+            del response["Credentials"]["Expiration"]
+        if not as_dict:
+            response = json.dumps(response, sort_keys=True, default=str)
 
     return response
 
@@ -428,7 +443,7 @@ def upload_tokenizer_data(bucket: str, project_id: str, data: str) -> bool:
     return True
 
 
-def get_all_buckets() -> typing.Dict[str, typing.Any]:
+def get_all_buckets() -> Dict[str, Any]:
     """
     Reads all bucket information from the target client
 
@@ -478,7 +493,7 @@ def copy_object(
     return None
 
 
-def get_bucket_objects(bucket: str, prefix: str = None) -> typing.Dict[str, typing.Any]:
+def get_bucket_objects(bucket: str, prefix: str = None) -> Dict[str, Any]:
     """
     scans the s3 bucket for matching objects
 

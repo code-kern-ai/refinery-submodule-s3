@@ -176,7 +176,9 @@ def get_object(bucket: str, object_name: str) -> str:
     return None
 
 
-def download_object(bucket: str, object_name: str, file_type: str) -> str:
+def download_object(
+    bucket: str, object_name: str, file_type: str, file_name: Optional[str] = None
+) -> str:
     """
     Download an s3 object to the local (docker container) file system.
 
@@ -193,9 +195,9 @@ def download_object(bucket: str, object_name: str, file_type: str) -> str:
     """
     target = get_current_target()
     if target == ConnectionTarget.MINIO:
-        return minio.download_object(bucket, object_name, file_type)
+        return minio.download_object(bucket, object_name, file_type, file_name)
     elif target == ConnectionTarget.AWS:
-        return aws.download_object(bucket, object_name, file_type)
+        return aws.download_object(bucket, object_name, file_type, file_name)
     elif target == ConnectionTarget.UNKNOWN:
         return None
 

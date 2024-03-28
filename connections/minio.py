@@ -73,13 +73,19 @@ def get_object(bucket: str, object_name: str) -> str:
     )
 
 
-def download_object(bucket: str, object_name: str, file_type: str) -> str:
+def download_object(
+    bucket: str,
+    object_name: str,
+    file_type: str,
+    file_name: typing.Optional[str] = None,
+) -> str:
     client = __get_client()
 
     if not bucket_exists(bucket):
         return ""
 
-    file_name = f"tmpfile.{file_type}"
+    if not file_name:
+        file_name = f"tmpfile.{file_type}"
     if os.path.exists(file_name):
         os.remove(file_name)
     client.fget_object(bucket, object_name, file_name)

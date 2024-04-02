@@ -45,18 +45,27 @@ def create_bucket(bucket: str) -> bool:
     return True
 
 
-def put_object(bucket: str, object_name: str, data: str) -> str:
+def put_object(
+    bucket: str,
+    object_name: str,
+    data: str,
+    content_type: str = "application/json",
+    encode_utf8: bool = True,
+) -> str:
     client = __get_client()
 
     if not bucket_exists(bucket):
         create_bucket(bucket)
 
+    bytes_data = data.encode("UTF-8") if encode_utf8 else data
+    bytes_data = io.BytesIO(bytes(bytes_data))
+
     client.put_object(
         bucket_name=bucket,
         object_name=object_name,
-        data=io.BytesIO(bytes(data.encode("UTF-8"))),
+        data=bytes_data,
         length=-1,
-        content_type="application/json",
+        content_type=content_type,
         part_size=1_000_000_000,
     )
     return True

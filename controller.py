@@ -129,7 +129,13 @@ def archive_bucket(
     return True
 
 
-def put_object(bucket: str, object_name: str, data: str) -> bool:
+def put_object(
+    bucket: str,
+    object_name: str,
+    data: str,
+    content_type: str = "application/json",
+    encode_utf8: bool = True,
+) -> bool:
     """
     Stores string data as an s3 object in a given bucket.
     If any data needs to be stored, use upload_object to store a file.
@@ -144,9 +150,9 @@ def put_object(bucket: str, object_name: str, data: str) -> bool:
     """
     target = get_current_target()
     if target == ConnectionTarget.MINIO:
-        return minio.put_object(bucket, object_name, data)
+        return minio.put_object(bucket, object_name, data, content_type, encode_utf8)
     elif target == ConnectionTarget.AWS:
-        return aws.put_object(bucket, object_name, data)
+        return aws.put_object(bucket, object_name, data, content_type, encode_utf8)
     elif target == ConnectionTarget.UNKNOWN:
         return False
 

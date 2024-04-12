@@ -45,18 +45,27 @@ def create_bucket(bucket: str) -> bool:
     return True
 
 
-def put_object(bucket: str, object_name: str, data: str) -> str:
+def put_object(
+    bucket: str,
+    object_name: str,
+    data: str,
+    content_type: str = "application/json",
+    encode_utf8: bool = True,
+) -> str:
     client = __get_client()
 
     if not bucket_exists(bucket):
         create_bucket(bucket)
 
+    bytes_data = data.encode("UTF-8") if encode_utf8 else data
+    bytes_data = io.BytesIO(bytes(bytes_data))
+
     client.put_object(
         bucket_name=bucket,
         object_name=object_name,
-        data=io.BytesIO(bytes(data.encode("UTF-8"))),
+        data=bytes_data,
         length=-1,
-        content_type="application/json",
+        content_type=content_type,
         part_size=1_000_000_000,
     )
     return True
@@ -73,13 +82,19 @@ def get_object(bucket: str, object_name: str) -> str:
     )
 
 
-def download_object(bucket: str, object_name: str, file_type: str) -> str:
+def download_object(
+    bucket: str,
+    object_name: str,
+    file_type: str,
+    file_name: typing.Optional[str] = None,
+) -> str:
     client = __get_client()
 
     if not bucket_exists(bucket):
         return ""
 
-    file_name = f"tmpfile.{file_type}"
+    if not file_name:
+        file_name = f"tmpfile.{file_type}"
     if os.path.exists(file_name):
         os.remove(file_name)
     client.fget_object(bucket, object_name, file_name)

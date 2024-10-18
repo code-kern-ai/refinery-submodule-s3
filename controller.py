@@ -182,6 +182,31 @@ def get_object(bucket: str, object_name: str) -> str:
     return None
 
 
+def get_object_bytes(bucket: str, object_name: str) -> bytes:
+    """
+    Returns data from an S3 object as byte data.
+    Can be used to read binary data like PDF, images, or other file types.
+
+    Args:
+        bucket (str): S3 bucket name (organization_id).
+        object_name (str): S3 object name (project_id + "/" + e.g. docbin_full).
+
+    Returns:
+        Byte data of the given S3 object.
+    """
+    target = get_current_target()
+    if target == ConnectionTarget.MINIO:
+        return minio.get_object_bytes(bucket, object_name)
+
+    elif target == ConnectionTarget.AWS:
+        return aws.get_object_bytes(bucket, object_name)
+
+    elif target == ConnectionTarget.UNKNOWN:
+        return None
+
+    return None
+
+
 def download_object(
     bucket: str, object_name: str, file_type: str, file_name: Optional[str] = None
 ) -> str:

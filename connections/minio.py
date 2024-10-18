@@ -82,6 +82,15 @@ def get_object(bucket: str, object_name: str) -> str:
     )
 
 
+def get_object_bytes(bucket: str, object_name: str) -> bytes:
+    client = __get_client()
+
+    if not bucket_exists(bucket):
+        return b""
+
+    return client.get_object(bucket_name=bucket, object_name=object_name).data
+
+
 def download_object(
     bucket: str,
     object_name: str,

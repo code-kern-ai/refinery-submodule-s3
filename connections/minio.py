@@ -193,7 +193,7 @@ def get_upload_credentials_and_id(target_bucket: str) -> dict:
         endpoint_url=os.getenv("S3_ENDPOINT"),
         aws_access_key_id=os.getenv("S3_ACCESS_KEY"),
         aws_secret_access_key=os.getenv("S3_SECRET_KEY"),
-        use_ssl=False,
+        use_ssl=os.getenv("S3_USE_SSL") == "1",
     )
     policy = {
         "Version": "2012-10-17",
@@ -230,7 +230,7 @@ def get_upload_credentials_and_id_with_endpoint(
         endpoint_url=endpoint,
         aws_access_key_id=os.getenv("S3_ACCESS_KEY"),
         aws_secret_access_key=os.getenv("S3_SECRET_KEY"),
-        use_ssl=False,
+        use_ssl=os.getenv("S3_USE_SSL") == "1",
     )
     policy = {
         "Version": "2012-10-17",
@@ -265,7 +265,7 @@ def get_download_credentials(bucket: str, object: str) -> dict:
         endpoint_url=os.getenv("S3_ENDPOINT"),
         aws_access_key_id=os.getenv("S3_ACCESS_KEY"),
         aws_secret_access_key=os.getenv("S3_SECRET_KEY"),
-        use_ssl=False,
+        use_ssl=os.getenv("S3_USE_SSL") == "1",
     )
     policy = {
         "Version": "2012-10-17",

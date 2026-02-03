@@ -147,16 +147,9 @@ submodules/s3/
 #### Adding a New Operation
 
 1. Add function to both `connections/aws.py` and `connections/minio.py` with identical signatures
-2. Add routing function to `controller.py` that:
-   - Calls `get_current_target()`
-   - Routes to appropriate connection based on target
-   - Handles `ConnectionTarget.UNKNOWN` case
-   - Returns consistent type
-
-#### Example Pattern:
+2. Add routing function to `controller.py`:
 
 ```python
-# In controller.py
 def new_operation(bucket: str, param: str) -> bool:
     target = get_current_target()
     if target == ConnectionTarget.MINIO:
@@ -178,20 +171,18 @@ def new_operation(bucket: str, param: str) -> bool:
   - Raises section if exceptions are raised
 - Use clear, descriptive function and variable names
 
-### 17. Security Considerations
+### 17. Security & Performance
 
+**Security:**
 - Never log or expose credentials
 - Use environment variables for all sensitive configuration
 - Presigned URLs should have appropriate expiration times
-- STS credentials should have minimal required permissions
 - Validate bucket and object names to prevent path traversal
 
-### 18. Performance Considerations
-
+**Performance:**
 - Use lazy client initialization to avoid unnecessary connections
 - Batch operations when possible (e.g., `get_bucket_objects()`)
 - Use appropriate part sizes for multipart uploads
-- Consider connection pooling for high-throughput scenarios
 
 ## Quick Reference
 

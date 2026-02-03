@@ -1,0 +1,218 @@
+---
+alwaysApply: true
+---
+
+# S3 Submodule Guidelines
+
+This directory contains guidelines and conventions for the `submodules/s3` module. These guidelines ensure consistency, maintainability, and correctness across all S3 storage operations, connection handling, and related code.
+
+## Overview
+
+The `submodules/s3` module provides a unified interface for S3-compatible storage operations, supporting both AWS S3 and Minio. The module follows an abstraction pattern where:
+
+- **Controller** (`controller.py`): Provides a unified API that routes operations to the appropriate connection backend
+- **Connections** (`connections/`): Contains backend-specific implementations (`aws.py`, `minio.py`)
+- **Enums** (`enums.py`): Defines connection target types (`ConnectionTarget`)
+
+## Architecture Principles
+
+### 1. Connection Abstraction
+
+- All public functions should be defined in `controller.py`
+- Controller functions MUST route to the appropriate connection based on `get_current_target()`
+- Connection-specific implementations MUST be in `connections/aws.py` or `connections/minio.py`
+- Never import connection modules directly from outside the submodule - always use `controller.py`
+
+### 2. Connection Target Detection
+
+- Use `get_current_target()` to determine the active connection target
+- Connection target is determined by the `S3_TARGET` environment variable:
+  - `"AWS"` → `ConnectionTarget.AWS`
+  - Any other value or unset → `ConnectionTarget.MINIO`
+- Always handle `ConnectionTarget.UNKNOWN` case explicitly
+
+### 3. Client Initialization Pattern
+
+- Connection modules use lazy initialization with global client variables
+- Client initialization functions should be private (prefixed with `__`)
+- Use `__get_client()` pattern for accessing the client
+- Initialize client only when needed, not at module import time
+- Handle connection failures gracefully with appropriate exceptions
+
+### 4. Function Signatures and Return Types
+
+- All controller functions MUST accept the same parameters regardless of backend
+- Return types should be consistent:
+  - Boolean operations return `bool`
+  - Data retrieval returns `str`, `bytes`, or `Dict[str, Any]` as appropriate
+  - File operations return file paths as `str` or `None`
+- Use type hints consistently for all function parameters and return values
+
+### 5. Error Handling
+
+- Check for bucket/object existence before operations when appropriate
+- Return `False` or `None` for failed operations (don't raise exceptions unless critical)
+- Raise exceptions only for:
+  - Missing required environment variables
+  - Connection failures
+  - FileNotFoundError for missing objects when creating presigned URLs
+  - ValueError for invalid operations (e.g., overwriting without `force=True`)
+
+### 6. Environment Variables
+
+#### Minio Configuration
+- `S3_ENDPOINT`: External address (e.g., `http://$HOST_IP:7053`)
+- `S3_ENDPOINT_LOCAL`: Local address (e.g., `object-storage:9000`)
+- `S3_ACCESS_KEY`: S3 username
+- `S3_SECRET_KEY`: S3 password
+- `S3_USE_SSL`: Set to `"1"` to use SSL
+
+#### AWS Configuration
+- `S3_TARGET`: Set to `"AWS"` to use AWS (defaults to Minio otherwise)
+- `S3_AWS_ENDPOINT`: AWS endpoint address
+- `S3_AWS_REGION`: AWS region (e.g., `eu-west-1`)
+- `S3_AWS_ACCESS_KEY`: AWS access key
+- `S3_AWS_SECRET_KEY`: AWS secret key
+- `STS_ENDPOINT`: Security Token Service endpoint
+
+### 7. Bucket Operations
+
+- Bucket names typically represent `organization_id` (UUID format)
+- Always check `bucket_exists()` before operations that require existing buckets
+- Create buckets automatically when needed for write operations (unless explicitly documented otherwise)
+- Use `ARCHIVE_BUCKET = "archive"` constant for archiving operations
+- When removing buckets, handle recursive deletion of objects explicitly
+
+### 8. Object Operations
+
+- Object names follow pattern: `project_id + "/" + object_name` (e.g., `project_id/docbin_full`)
+- Use `put_object()` for string data (JSON, text)
+- Use `upload_object()` for file uploads from local filesystem
+- Use `get_object()` for string data retrieval
+- Use `get_object_bytes()` for binary data (PDFs, images, etc.)
+- Use `download_object()` to save objects to local filesystem
+
+### 9. Presigned URLs and Credentials
+
+- `create_access_link()`: Creates GET presigned URLs (1 hour expiry)
+- `create_file_upload_link()`: Creates PUT presigned URLs (12 hours expiry)
+- `create_data_upload_link()`: Creates POST presigned URLs (12 hours expiry)
+- `get_upload_credentials_and_id()`: Returns STS credentials for direct client uploads
+- `get_download_credentials()`: Returns STS credentials for direct client downloads
+- Always verify object/bucket existence before creating presigned URLs
+
+### 10. File Path Handling
+
+- Use relative paths for temporary files (e.g., `tmpfile.{file_type}`)
+- Clean up temporary files after operations when possible
+- Use `os.path.exists()` to verify file existence before upload operations
+- Handle file name conflicts appropriately (use `force` parameter)
+
+### 11. Migration and Transfer Operations
+
+- `transfer_bucket_from_minio_to_aws()`: Downloads from Minio and uploads to AWS
+- Always handle cleanup of temporary files during transfer
+- Support `remove_from_minio` flag for one-way migrations
+- Support `force_overwrite` flag for overwriting existing objects
+
+### 12. Code Organization
+
+```
+submodules/s3/
+├── controller.py          # Main API - routes to connections
+├── enums.py               # ConnectionTarget enum
+├── connections/
+│   ├── aws.py            # AWS S3 implementation
+│   └── minio.py          # Minio implementation
+└── .cursor/
+    └── rules/
+        └── guidelines.mdc  # This file
+```
+
+### 13. Import Patterns
+
+- Controller imports: `from .connections import minio` and `from .connections import aws`
+- Use relative imports within the submodule (e.g., `from .enums import ConnectionTarget`)
+- External code should import from `controller.py` only, never from `connections/` directly
+
+### 14. Testing Considerations
+
+- Functions should be testable by mocking connection modules
+- Support both Minio and AWS backends in tests
+- Test connection target switching behavior
+- Test error handling for missing environment variables
+
+### 15. Common Patterns
+
+#### Adding a New Operation
+
+1. Add function to both `connections/aws.py` and `connections/minio.py` with identical signatures
+2. Add routing function to `controller.py` that:
+   - Calls `get_current_target()`
+   - Routes to appropriate connection based on target
+   - Handles `ConnectionTarget.UNKNOWN` case
+   - Returns consistent type
+
+#### Example Pattern:
+
+```python
+# In controller.py
+def new_operation(bucket: str, param: str) -> bool:
+    target = get_current_target()
+    if target == ConnectionTarget.MINIO:
+        return minio.new_operation(bucket, param)
+    elif target == ConnectionTarget.AWS:
+        return aws.new_operation(bucket, param)
+    elif target == ConnectionTarget.UNKNOWN:
+        return False
+    return False
+```
+
+### 16. Documentation
+
+- All public functions MUST have docstrings
+- Docstrings should include:
+  - Brief description
+  - Args section with types and descriptions
+  - Returns section with return type and description
+  - Raises section if exceptions are raised
+- Use clear, descriptive function and variable names
+
+### 17. Security Considerations
+
+- Never log or expose credentials
+- Use environment variables for all sensitive configuration
+- Presigned URLs should have appropriate expiration times
+- STS credentials should have minimal required permissions
+- Validate bucket and object names to prevent path traversal
+
+### 18. Performance Considerations
+
+- Use lazy client initialization to avoid unnecessary connections
+- Batch operations when possible (e.g., `get_bucket_objects()`)
+- Use appropriate part sizes for multipart uploads
+- Consider connection pooling for high-throughput scenarios
+
+## Quick Reference
+
+### Common Operations
+
+- **Check bucket exists**: `bucket_exists(bucket: str) -> bool`
+- **Create bucket**: `create_bucket(bucket: str) -> bool`
+- **Remove bucket**: `remove_bucket(bucket: str, recursive: bool = False) -> bool`
+- **Put string data**: `put_object(bucket: str, object_name: str, data: str, ...) -> bool`
+- **Get string data**: `get_object(bucket: str, object_name: str) -> str`
+- **Upload file**: `upload_object(bucket: str, object_name: str, file_path: str, force: bool = False) -> bool`
+- **Download file**: `download_object(bucket: str, object_name: str, file_type: str, ...) -> str`
+- **Delete object**: `delete_object(bucket: str, object_name: str) -> bool`
+- **Check object exists**: `object_exists(bucket: str, object_name: str) -> bool`
+- **Create presigned URL**: `create_access_link(bucket: str, object_name: str) -> str`
+- **List objects**: `get_bucket_objects(bucket: str, prefix: str = None) -> Dict[str, Any]`
+- **Copy object**: `copy_object(source_bucket: str, source_object: str, target_bucket: str, target_object: str) -> bool`
+
+### Constants
+
+- `ARCHIVE_BUCKET = "archive"`: Default archive bucket name
+- `ESSENTIAL_CREDENTIAL_KEYS = {"bucket", "Credentials", "uploadTaskId"}`: Required credential keys
+
+For detailed implementation examples, refer to the existing code in `controller.py` and `connections/` modules.

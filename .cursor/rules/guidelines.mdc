@@ -1,4 +1,6 @@
 ---
+description: Guidelines for S3 storage operations and connection handling
+globs: ["controller.py", "connections/**/*.py", "enums.py"]
 alwaysApply: true
 ---
 
